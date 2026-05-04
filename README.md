@@ -6,17 +6,17 @@
 <p align="center">Your Wing, metered in the browser.</p>
 
 <p align="center">
-  <a href="https://github.com/infiniitz/wing-browser-meters/blob/main/LICENSE"><img src="https://img.shields.io/github/license/infiniitz/wing-browser-meters?style=flat" alt="License" /></a>
-  <a href="https://github.com/infiniitz/wing-browser-meters/pkgs/container/wing-browser-meters"><img src="https://img.shields.io/badge/GHCR-image-2496ED?style=flat&logo=docker&logoColor=white" alt="GHCR image" /></a>
+  <a href="https://github.com/Infiniitz/wing-browser-meters/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Infiniitz/wing-browser-meters?style=flat" alt="License" /></a>
+  <a href="https://github.com/Infiniitz/wing-browser-meters/pkgs/container/wing-browser-meters"><img src="https://img.shields.io/badge/GHCR-image-2496ED?style=flat&logo=docker&logoColor=white" alt="GHCR image" /></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-20-339933?style=flat&logo=nodedotjs&logoColor=white" alt="Node.js 20" /></a>
-  <a href="https://github.com/infiniitz/wing-browser-meters/actions/workflows/docker.yml"><img src="https://img.shields.io/github/actions/workflow/status/infiniitz/wing-browser-meters/docker.yml?branch=main&logo=github&label=build&style=flat" alt="Docker build workflow" /></a>
+  <a href="https://github.com/Infiniitz/wing-browser-meters/actions/workflows/docker.yml"><img src="https://img.shields.io/github/actions/workflow/status/Infiniitz/wing-browser-meters/docker.yml?branch=main&logo=github&label=build&style=flat" alt="Docker build workflow" /></a>
 </p>
 
 **Wing Browser Meters** is a small Node.js service that connects to a [Behringer Wing](https://www.behringer.com/product.html?modelCode=P0CQK) on your LAN, subscribes to its meter stream, and pushes levels to browsers over Socket.IO. Pages show live LED-style bars with Wing scribble names, scribble colours (or your overrides), and **PRE** vs **POST** taps where the mixer exposes both. It was aimed first at **OBS Studio custom browser docks** so you can keep meters beside your scenes; the same `/horizontal` and `/vertical` pages work full-screen on tablets, second screens, or wall displays.
 
 **Baseline configuration** (settings UI → persisted in `app-config.json`): choose which strips are meters (channels, auxes, buses, mains, matrices, DCAs), set **PRE/POST** per strip, adjust **horizontal** labels (number/name) or **vertical** row layout, optionally override **label and text colours** per kind instead of following Wing scribble colours, configure **mixer connection** (discovery or fixed IP), set how often **names and colours** refresh from the Wing, and turn on **Low Resource Mode** to cap meter update rate and reduce CPU use. See [Configuration](#configuration) for backing up or sharing that file.
 
-By [Infinitz](https://github.com/infiniitz). MIT licensed.
+By [Infinitz](https://github.com/Infiniitz). MIT licensed.
 
 ---
 
@@ -42,7 +42,7 @@ Published images cover **linux/amd64** and **linux/arm64**:
 ghcr.io/infiniitz/wing-browser-meters:latest
 ```
 
-Package page: [https://github.com/infiniitz/wing-browser-meters/pkgs/container/wing-browser-meters](https://github.com/infiniitz/wing-browser-meters/pkgs/container/wing-browser-meters)
+Package page: [https://github.com/Infiniitz/wing-browser-meters/pkgs/container/wing-browser-meters](https://github.com/Infiniitz/wing-browser-meters/pkgs/container/wing-browser-meters)
 
 ### Option A — Docker Compose (recommended)
 
@@ -59,7 +59,7 @@ docker compose up -d
 **From a git clone** — optional; use this if you want the full project locally (README, source, matching compose file):
 
 ```bash
-git clone https://github.com/infiniitz/wing-browser-meters.git
+git clone https://github.com/Infiniitz/wing-browser-meters.git
 cd wing-browser-meters
 docker compose pull
 docker compose up -d
