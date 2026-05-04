@@ -1,0 +1,9 @@
+<script type="application/json" id="display-layout-data"><%- JSON.stringify(displayLayout).replace(/</g, '\\u003c') %></script>
+<script type="application/json" id="meter-label-colors-data"><%- JSON.stringify(meterLabelColors).replace(/</g, '\\u003c') %></script>
+<script type="application/json" id="meter-text-colors-data"><%- JSON.stringify(meterTextColors).replace(/</g, '\\u003c') %></script>
+<div class="meters-container" id="metersContainer">
+  <!-- Vertical meter bars (numbers only labels) will be generated here -->
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/script.js"></script>
+

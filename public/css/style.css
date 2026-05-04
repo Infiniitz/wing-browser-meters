@@ -1,0 +1,2077 @@
+/* Scrollbar */
+
+:root {
+  /* Matches .app-header-title-wing — Wing console accent */
+  --wing-yellow: #f9b82d;
+  /* Slightly darker than white — clearer against --wing-yellow when toggle is on */
+  --settings-toggle-knob-on: #d8dce3;
+
+  /* Surfaces */
+  --bg-app: #272A33;       /* app background */
+  --surface-1: #2a2e38;    /* subtle card / divider */
+  --surface-2: #3a3f4b;    /* stronger card / field border */
+
+  /* Text ramp (brighter → dimmer) */
+  --text-1: #eee;
+  --text-2: #b0bec5;
+  --text-3: #9ca3af;
+  --text-4: #6b7280;
+
+  /* Status */
+  --color-danger: #f44336;
+
+  /* Geometry */
+  --radius-sm: 4px;
+  --field-h: 28px;         /* shared height for buttons/fields/color rows */
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #555 #2a2a2a;
+  background-color: var(--bg-app);
+}
+
+html::-webkit-scrollbar {
+  width: 8px;
+}
+
+html::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: var(--radius-sm);
+}
+
+html::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: var(--radius-sm);
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* Base / Reset */
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0px;
+  margin: 0;
+}
+
+h1 {
+  margin-bottom: 20px;
+}
+
+/* App Header */
+
+.app-header {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  margin: 8px 0 4px;
+}
+
+.app-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-header-logo {
+  display: block;
+  height: 24px;
+  width: auto;
+}
+
+.app-header-title {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.app-header-title-wing {
+  color: var(--wing-yellow);
+}
+
+.app-header-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.app-header-link {
+  font-size: 12px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.app-header-link:hover {
+  text-decoration: underline;
+}
+
+/* Meter Container & Wrapper */
+
+.meters-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: var(--bg-app);
+  padding: 16px;
+  min-width: 100px;
+}
+
+.meter-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+}
+
+.meter-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: auto;
+}
+
+.meter-bg--stereo-r {
+  margin-left: 0;
+}
+
+/* Meter Labels (Channel Number & Name) */
+
+.meter-channel-num,
+.meter-label {
+  height: 12px;
+  box-sizing: border-box;
+  font-size: 10.5px;
+  font-family: Arial, sans-serif;
+  color: #000;
+  padding: 4px 8px;
+  border-radius: 1.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.meter-channel-num {
+  width: 23px;
+  min-width: 23px;
+  padding-left: 3px;
+  padding-right: 3px;
+  margin-right: 1px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.meter-label {
+  width: 76px;
+  min-width: 76px;
+  margin-right: 4px;
+  justify-content: flex-start;
+  text-align: left;
+  padding-left: 3px;
+}
+
+.meter-channel-num.meter-label--default,
+.meter-label.meter-label--default {
+  background-color: #455a64;
+  color: #000;
+}
+
+/* Horizontal: hidden labels leave the flex row; match name→meter gap (4px) for number→meter when name is off. */
+.page-horizontal .meter-label--hidden {
+  display: none !important;
+}
+
+.page-horizontal .meter-wrapper:has(> .meter-label.meter-label--hidden) > .meter-channel-num {
+  margin-right: 4px;
+}
+
+/* Meter Bar (gradient + mask + clip-path renderer)
+ *
+ * The bar mimics the demo SVG previews in docs/: a single dim "off" layer
+ * (segmented stripes via repeating-linear-gradient) plus a single colored
+ * "on" fill (green/yellow/red zones via linear-gradient, segmented via
+ * mask-image) that's revealed by an animated clip-path inset.
+ *
+ * Geometry (must match tools/generate-demo-svg.js):
+ *   - 37 segments, each 2px wide, 1px gap between → 110px total bar length.
+ *   - Color zones: green segments 0–25 (ends at 77px, next starts at 78),
+ *     yellow 26–32 (ends at 98, next 99), red 33–36 (ends at 110). The 1px
+ *     gap between zones falls inside a mask cut-out, so any zone-stop value
+ *     within a gap (e.g. 78 / 99) gives the same visual.
+ */
+
+.meter-bg {
+  --meter-dim: #16181e;
+  --meter-green: #1ED760;
+  --meter-yellow: #E7D600;
+  --meter-red: var(--color-danger);
+  --meter-stripe-mask: repeating-linear-gradient(
+    90deg,
+    #000 0 2px,
+    transparent 2px 3px
+  );
+  --meter-stripe-dim: repeating-linear-gradient(
+    90deg,
+    var(--meter-dim) 0 2px,
+    transparent 2px 3px
+  );
+  --meter-color-zones: linear-gradient(
+    90deg,
+    var(--meter-green) 0 78px,
+    var(--meter-yellow) 78px 99px,
+    var(--meter-red) 99px 110px
+  );
+
+  width: 110px;
+  height: 7px;
+  flex-shrink: 0;
+  margin-left: auto;
+  position: relative;
+  padding: 0;
+  background-color: transparent;
+  background-image: var(--meter-stripe-dim);
+}
+
+/* Stereo: two bars per row, use shorter bars */
+.meter-bars .meter-bg {
+  height: 5px;
+}
+
+.meter-fill {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--meter-color-zones);
+  -webkit-mask-image: var(--meter-stripe-mask);
+          mask-image: var(--meter-stripe-mask);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 100ms linear;
+  will-change: clip-path;
+}
+
+/* Low Resource Mode: drop the smoothing tween so the bar snaps to each
+ * frame instead of running a 100ms compositor animation per update. */
+body.low-resource .meter-fill {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meter-fill {
+    transition: none;
+  }
+}
+
+/* Vertical Meters Layout */
+
+.page-vertical .meters-container {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.page-vertical .meter-wrapper {
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0px;
+}
+
+.page-vertical .meter-bg {
+  width: 9px;
+  height: 110px;
+  background-image: repeating-linear-gradient(
+    0deg,
+    var(--meter-dim) 0 2px,
+    transparent 2px 3px
+  );
+}
+
+.page-vertical .meter-fill {
+  background: linear-gradient(
+    0deg,
+    var(--meter-green) 0 78px,
+    var(--meter-yellow) 78px 99px,
+    var(--meter-red) 99px 110px
+  );
+  -webkit-mask-image: repeating-linear-gradient(
+    0deg,
+    #000 0 2px,
+    transparent 2px 3px
+  );
+          mask-image: repeating-linear-gradient(
+    0deg,
+    #000 0 2px,
+    transparent 2px 3px
+  );
+  clip-path: inset(100% 0 0 0);
+}
+
+.page-vertical .meter-label {
+  display: none;
+}
+
+.page-vertical .meter-channel-num {
+  margin-right: 0;
+}
+
+.page-vertical .meter-bg,
+.page-vertical .meter-bars {
+  margin: 0;
+}
+
+.page-vertical .meter-bars {
+  flex-direction: row;
+}
+
+.page-vertical .meter-bars .meter-bg {
+  width: 7px;
+}
+
+.page-vertical.page-vertical--double-row .meters-container.meters-container--vertical-double {
+  flex-direction: column;
+  align-items: stretch;
+  /* Same as .page-vertical .meters-container row-gap between wrapped lines (gap: 4px) */
+  gap: 4px;
+}
+
+.page-vertical.page-vertical--double-row .meters-row--vertical-double {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  /* Same as horizontal spacing between meters in normal vertical (column-gap from container gap: 4px) */
+  gap: 4px;
+}
+
+/* Settings Page */
+
+.settings-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 16px;
+  box-sizing: border-box;
+  color: var(--text-1);
+  background-color: var(--bg-app);
+  font-family: Arial, sans-serif;
+}
+
+.settings-card {
+  width: 100%;
+  min-width: 560px;
+  max-width: 560px;
+  background-color: #1F222A;
+  border-radius: 6px;
+  padding: 16px 20px;
+  box-sizing: border-box;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.settings-title {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.settings-note {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+
+.settings-note--meter-block {
+  margin-top: 0;
+  margin-bottom: 0;
+  line-height: 1.45;
+}
+
+/* Settings – Tabs */
+
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 2px;
+  margin-top: 4px;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 1px solid var(--surface-1);
+}
+
+.settings-tab {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 8px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a939e;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.settings-tab:hover {
+  color: #cfd8dc;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.settings-tab:focus-visible {
+  outline: 2px solid #64b5f6;
+  outline-offset: 2px;
+}
+
+.settings-tab--active {
+  color: var(--text-1);
+  border-bottom-color: #42a5f5;
+  background-color: rgba(66, 165, 245, 0.08);
+}
+
+.settings-tab-panels {
+  padding-top: 22px;
+  /* Extra inset below tab content; card padding also applies — keep modest to avoid a heavy double gap */
+  padding-bottom: 5px;
+}
+
+.settings-tab-panel {
+  outline: none;
+}
+
+/* Settings – Meter Config Form */
+
+.meter-config {
+  margin-top: 12px;
+}
+
+.settings-meter-block .meter-config {
+  margin-top: 0;
+}
+
+.meter-config-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--surface-1);
+}
+
+.settings-meter-block .meter-config-toolbar {
+  margin-top: 12px;
+  padding-bottom: 20px;
+  border-bottom: none;
+}
+
+.meter-config-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.meter-config-toolbar-mode {
+  flex-shrink: 0;
+  margin-left: auto;
+  height: var(--field-h);
+  min-height: var(--field-h);
+  max-height: var(--field-h);
+  padding: 0 10px;
+  font-size: 11px;
+  line-height: 13px;
+  max-width: min(100%, 220px);
+  white-space: normal;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.meter-config-toolbar-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* [hidden] must win over display:flex (author CSS beats UA hidden) */
+.meter-config-toolbar-row[hidden] {
+  display: none !important;
+}
+
+#meterConfig .meter-config-group-header .icon-btn--group-tap {
+  display: none !important;
+}
+
+#meterConfig.meter-config--tap-mode .meter-config-group-header .icon-btn--group-select {
+  display: none !important;
+}
+
+#meterConfig.meter-config--tap-mode .meter-config-group-header .icon-btn--group-tap {
+  display: inline-flex !important;
+}
+
+.icon-btn--tap-pre-glyph {
+  color: #66bb6a;
+}
+
+.icon-btn--tap-post-glyph {
+  color: #ef5350;
+}
+
+.meter-config--tap-mode .toggle-box {
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  padding: 2px 1px;
+  line-height: 1;
+}
+
+.meter-config--tap-mode .toggle-box__tap-id {
+  font-size: 8px;
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.meter-config--tap-mode .toggle-box__tap-word {
+  font-size: 7px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  margin-top: 1px;
+  text-transform: uppercase;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.meter-config--tap-mode .toggle-box--tap-pre,
+.meter-config--tap-mode .toggle-box--tap-pre .toggle-box__tap-id {
+  color: #e8f5e9;
+}
+
+.meter-config--tap-mode .toggle-box--tap-pre .toggle-box__tap-word {
+  color: #ffffff;
+}
+
+.meter-config--tap-mode .toggle-box--tap-pre {
+  background-color: #1b5e20;
+  border-color: #43a047;
+}
+
+.meter-config--tap-mode .toggle-box--tap-pre:hover {
+  background-color: #2e7d32;
+  border-color: #66bb6a;
+}
+
+.meter-config--tap-mode .toggle-box--tap-post,
+.meter-config--tap-mode .toggle-box--tap-post .toggle-box__tap-id {
+  color: #ffebee;
+}
+
+.meter-config--tap-mode .toggle-box--tap-post .toggle-box__tap-word {
+  color: #ffffff;
+}
+
+.meter-config--tap-mode .toggle-box--tap-post {
+  background-color: #b71c1c;
+  border-color: #ef5350;
+}
+
+.meter-config--tap-mode .toggle-box--tap-post:hover {
+  background-color: #c62828;
+  border-color: #ff8a80;
+}
+
+.settings-btn--pre {
+  background-color: #2e7d32;
+}
+
+.settings-btn--pre:hover:not(:disabled) {
+  background-color: #388e3c;
+}
+
+.settings-btn--post {
+  background-color: #c62828;
+}
+
+.settings-btn--post:hover:not(:disabled) {
+  background-color: #d32f2f;
+}
+
+.meter-config-group {
+  margin-bottom: 14px;
+}
+
+.meter-config-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.meter-config-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.meter-config-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 26px);
+  gap: 4px;
+}
+
+.toggle-box {
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-4);
+  background-color: transparent;
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.toggle-box:hover {
+  border-color: #5a6270;
+  color: var(--text-3);
+}
+
+.toggle-box--active {
+  background-color: #455a64;
+  border-color: #455a64;
+  color: #000;
+}
+
+.toggle-box--active:hover {
+  background-color: #546e7a;
+  border-color: #546e7a;
+  color: #000;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--field-h);
+  height: var(--field-h);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-4);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+/* [hidden] must win over display:inline-flex (author CSS beats UA hidden) */
+.icon-btn[hidden] {
+  display: none !important;
+}
+
+.icon-btn:hover {
+  color: var(--text-1);
+  background-color: var(--surface-2);
+}
+
+.icon-btn.icon-btn--tap-pre-glyph:hover {
+  color: #a5d6a7;
+}
+
+.icon-btn.icon-btn--tap-post-glyph:hover {
+  color: #ffab91;
+}
+
+.icon-btn--sm {
+  width: 22px;
+  height: 22px;
+}
+
+.icon-btn--sm svg {
+  width: 10px;
+  height: 10px;
+}
+
+.meter-config-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+/* One 12px step from Save to note; inner gap only when Clear is visible (avoids double gap when Clear is collapsed). */
+.meter-config-actions-after-save {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+}
+
+.meter-config-actions-after-save:has(.meter-config-clear-btn--visible) {
+  gap: 12px;
+}
+
+.meter-config-actions .meter-config-clear-btn {
+  max-width: 0;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    visibility 0.18s ease,
+    max-width 0.2s ease,
+    padding 0.2s ease;
+}
+
+.meter-config-actions .meter-config-clear-btn.meter-config-clear-btn--visible {
+  max-width: 280px;
+  min-width: 0;
+  padding-left: 14px;
+  padding-right: 14px;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.meter-config-actions .meter-config-clear-btn.meter-config-clear-btn--visible:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #2c353b;
+  color: #78909c;
+}
+
+@keyframes meter-save-attention {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(249, 184, 45, 0.35);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px rgba(249, 184, 45, 0.2);
+  }
+}
+
+.settings-btn-primary.settings-btn-primary--dirty:not(:disabled) {
+  animation: meter-save-attention 2s ease-in-out infinite;
+}
+
+.settings-btn-primary.settings-btn-primary--dirty:disabled {
+  animation: none;
+}
+
+.settings-btn {
+  height: var(--field-h);
+  min-height: var(--field-h);
+  padding: 0 14px;
+  font-size: 12px;
+  line-height: 1;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background-color: #455a64;
+  color: #fff;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* [hidden] must win over display:inline-flex (author CSS beats UA hidden) */
+.settings-btn[hidden] {
+  display: none !important;
+}
+
+.settings-btn:hover:not(:disabled) {
+  background-color: #546e7a;
+}
+
+.settings-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.meter-config-actions .meter-config-clear-btn:not(.meter-config-clear-btn--visible):disabled {
+  opacity: 0;
+}
+
+.settings-btn-primary {
+  background-color: var(--wing-yellow);
+  color: #1e2229;
+}
+
+.settings-btn-primary:hover:not(:disabled) {
+  background-color: #fbc853;
+  color: #14161a;
+}
+
+.settings-btn--secondary {
+  background-color: #37474f;
+}
+
+.settings-btn--secondary:hover:not(:disabled) {
+  background-color: #455a64;
+}
+
+.meter-config-message {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--text-2);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  vertical-align: middle;
+}
+
+.meter-config-message.meter-config-message--visible {
+  opacity: 1;
+}
+
+.meter-config-message--error {
+  color: var(--color-danger);
+}
+
+/* Settings – Rows & Toggles */
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  min-height: 32px;
+}
+
+.settings-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row-label {
+  font-size: 13px;
+  color: var(--text-1);
+}
+
+.settings-row-hint {
+  font-size: 11px;
+  color: var(--text-4);
+}
+
+.settings-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.settings-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.settings-toggle-slider {
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-2);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.settings-toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #9ca3af;
+  border-radius: 50%;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.settings-toggle input:checked + .settings-toggle-slider {
+  background-color: var(--wing-yellow);
+}
+
+.settings-toggle input:checked + .settings-toggle-slider::before {
+  transform: translateX(16px);
+  background-color: var(--settings-toggle-knob-on);
+}
+
+.settings-vertical-row-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-self: stretch;
+  padding: 4px 0 12px 0;
+  margin: 0 0 4px 0;
+  box-sizing: border-box;
+}
+
+.settings-vertical-row-fields[hidden] {
+  display: none !important;
+}
+
+/* When the overflow note is not shown, avoid the extra bottom gap meant for note + card rhythm */
+.settings-display-layout
+  .settings-connection-section-card:has(#verticalRowOverflowNote[hidden])
+  .settings-vertical-row-fields:not([hidden]) {
+  padding-bottom: 4px;
+  margin-bottom: 0;
+}
+
+.settings-meter-color-field.settings-vertical-row-mode-field {
+  height: var(--field-h);
+  min-height: var(--field-h);
+  max-height: var(--field-h);
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Standalone field (no kind column): reuses the custom-row-layout field shell + spinner */
+.settings-refresh-interval-field {
+  display: flex;
+  align-items: stretch;
+  width: 144px;
+  height: var(--field-h);
+  min-height: var(--field-h);
+  max-height: var(--field-h);
+  border: 1px solid #3d4450;
+  border-radius: 6px;
+  background: #1a1d24;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.settings-refresh-interval-field__unit {
+  flex: 0 0 32px;
+  min-width: 32px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-right: 1px solid #3d4450;
+  border-radius: 0;
+  background: #22262e;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.settings-refresh-interval-field__unit:hover {
+  background: #2c313a;
+  color: #eceff1;
+}
+
+.settings-refresh-interval-field__unit:focus {
+  outline: none;
+}
+
+.settings-refresh-interval-field__unit:focus-visible {
+  outline: 2px solid rgba(66, 165, 245, 0.75);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.settings-refresh-interval-field:hover:not(:focus-within) {
+  border-color: #4e5868;
+  background: #1e232c;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.settings-refresh-interval-field:focus-within {
+  border-color: rgba(66, 165, 245, 0.55);
+  box-shadow: 0 0 0 1px rgba(66, 165, 245, 0.25);
+}
+
+.settings-refresh-interval-field .settings-vertical-row-mode-field__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  margin: 0;
+  border-radius: 0;
+}
+
+.settings-meter-color-field.settings-vertical-row-mode-field .settings-meter-color-field__kind {
+  flex: 0 0 138px;
+  min-width: 138px;
+}
+
+.settings-meter-color-field.settings-vertical-row-mode-field .settings-vertical-row-mode-field__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  margin: 0;
+  border-radius: 0;
+}
+
+.settings-vertical-row-mode-field__spin {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  width: 24px;
+  min-width: 24px;
+  border-left: 1px solid #3d4450;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.settings-vertical-row-mode-field__step.settings-btn {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  border: none;
+  font-size: 0;
+  line-height: 0;
+  /* Slightly darker than .settings-btn so the strip reads as inset vs. the value area */
+  background-color: #3c4f57;
+  color: #fff;
+}
+
+.settings-vertical-row-mode-field__step.settings-btn:hover:not(:disabled) {
+  background-color: #4a5d66;
+}
+
+.settings-vertical-row-mode-field__step.settings-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.settings-vertical-row-mode-field__step + .settings-vertical-row-mode-field__step {
+  border-top: 1px solid #3d4450;
+}
+
+.settings-vertical-row-mode-field__step-icon {
+  display: block;
+  flex-shrink: 0;
+  width: 9px;
+  height: 5px;
+  color: inherit;
+}
+
+.settings-vertical-row-mode-field__step:focus {
+  outline: none;
+}
+
+.settings-vertical-row-mode-field__step:focus-visible {
+  outline: 2px solid rgba(66, 165, 245, 0.75);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.settings-vertical-row-mode-field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  margin: 0;
+  padding: 0 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: #e3f2fd;
+  line-height: 1.25;
+  text-align: right;
+  align-self: stretch;
+  cursor: text;
+}
+
+.settings-vertical-row-mode-field__input::-webkit-outer-spin-button,
+.settings-vertical-row-mode-field__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.settings-vertical-row-mode-field__input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.settings-vertical-row-mode-field__input:hover:enabled {
+  color: #f5f9ff;
+}
+
+.settings-vertical-row-mode-field__input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.settings-vertical-row-overflow-note {
+  font-size: 12px;
+  color: var(--color-danger);
+  margin: 0px 0 0;
+  line-height: 1.45;
+  max-width: 100%;
+  white-space: pre-line;
+}
+
+.settings-vertical-row-overflow-note[hidden] {
+  display: none !important;
+}
+
+.settings-wing-scan-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 28rem;
+  align-self: center;
+  margin: 0;
+  padding: 0;
+  padding-bottom: 14px;
+  box-sizing: border-box;
+}
+
+.settings-wing-scan-results[hidden] {
+  display: none !important;
+  padding-bottom: 0;
+}
+
+.settings-wing-device-btn {
+  justify-content: flex-start;
+  text-align: left;
+  width: 100%;
+  font-size: 11px;
+}
+
+/* Mixer & connection tab: vertical gap between Wing + Performance (matches tab-panels top padding) */
+.settings-connection-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+.settings-connection-layout > .settings-wing-status,
+.settings-connection-layout > .settings-connection-section-card {
+  margin-bottom: 0;
+}
+
+/* Display tab: stacked section cards */
+.settings-display-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+.settings-display-layout > .settings-connection-section-card {
+  margin-bottom: 0;
+}
+
+/* Connection tab + meter block (shared shell) */
+.settings-wing-status,
+.settings-connection-section-card,
+.settings-meter-block {
+  --wing-status-pad-x: 14px;
+  margin: 0 0 14px;
+  padding: 12px var(--wing-status-pad-x);
+  background-color: #252830;
+  border: 1px solid #2f3540;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+#settings-panel-meter > .settings-meter-block {
+  margin-bottom: 0;
+}
+
+.settings-wing-status {
+  /* Connected / Disconnected pill */
+  --wing-status-line-height: 28px;
+  /* Bordered IP row (slightly taller than badge) */
+  --wing-status-field-height: 32px;
+}
+
+/* In-card title row (e.g. Performance) — matches gap under Wing connection label row */
+.settings-connection-section-card-title {
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+.settings-connection-section-card-title .settings-wing-status-label {
+  margin: 0;
+}
+
+.settings-wing-status-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  /* Space below label + IP row + status badge (matches rhythm before scan moved into header) */
+  margin-bottom: 14px;
+}
+
+.settings-wing-status-head-top {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.settings-wing-status-head-top .settings-wing-status-label {
+  margin: 0;
+}
+
+.settings-wing-status-head-actions {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Sliding “Auto” knob on a short track (18px tall, tighter radius than scan icon) */
+.settings-wing-auto-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  margin: 0;
+  vertical-align: middle;
+}
+
+.settings-wing-auto-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.settings-wing-auto-toggle-slider {
+  position: relative;
+  display: block;
+  width: 52px;
+  height: 18px;
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-2);
+  user-select: none;
+  transition: background-color 0.22s ease;
+}
+
+.settings-wing-auto-toggle-knob {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  box-sizing: border-box;
+  border-radius: 3px;
+  background-color: #c5ccd6;
+  color: var(--surface-1);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  transition:
+    transform 0.22s ease,
+    background-color 0.22s ease,
+    color 0.22s ease;
+  transform: translateX(0);
+}
+
+.settings-wing-auto-toggle input:checked + .settings-wing-auto-toggle-slider {
+  background-color: var(--wing-yellow);
+}
+
+.settings-wing-auto-toggle input:checked + .settings-wing-auto-toggle-slider .settings-wing-auto-toggle-knob {
+  transform: translateX(calc(48px - 100%));
+  background-color: var(--settings-toggle-knob-on);
+  color: var(--surface-1);
+}
+
+.settings-wing-auto-toggle input:focus-visible + .settings-wing-auto-toggle-slider {
+  box-shadow: 0 0 0 2px rgba(249, 184, 45, 0.45);
+}
+
+.settings-wing-auto-toggle input:disabled + .settings-wing-auto-toggle-slider {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.settings-wing-auto-toggle input:disabled + .settings-wing-auto-toggle-slider .settings-wing-auto-toggle-knob {
+  transform: translateX(0);
+}
+
+.settings-wing-auto-toggle input:checked:disabled + .settings-wing-auto-toggle-slider .settings-wing-auto-toggle-knob {
+  transform: translateX(calc(48px - 100%));
+}
+
+.settings-wing-auto-toggle:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.settings-wing-scan-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.settings-wing-scan-icon-wrap:has(.settings-wing-scan-icon-btn:disabled) {
+  cursor: help;
+}
+
+.settings-wing-scan-icon-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #8a939e;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.settings-wing-scan-icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e3f2fd;
+}
+
+.settings-wing-scan-icon-btn:focus {
+  outline: none;
+}
+
+.settings-wing-scan-icon-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(66, 165, 245, 0.45);
+}
+
+.settings-wing-scan-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.settings-wing-scan-icon {
+  display: block;
+  pointer-events: none;
+}
+
+.settings-wing-status-scan-panel[hidden] {
+  display: none !important;
+}
+
+.settings-wing-status-scan-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  /* Match space below address block (.settings-wing-status-head) before connection hints */
+  margin-bottom: 14px;
+}
+
+.settings-wing-status-divider {
+  margin: 0 calc(-1 * var(--wing-status-pad-x)) 14px;
+  border: none;
+  border-top: 1px solid #323842;
+  height: 0;
+  align-self: stretch;
+}
+
+.settings-wing-status-divider--scan-results {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.settings-wing-status-divider--scan-results[hidden] {
+  display: none !important;
+}
+
+.settings-wing-status-scan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Message-only (e.g. “No consoles found.”): 14px above/below, text start-aligned */
+.settings-wing-status-scan:has(> .settings-wing-scan-loading[hidden]):has(
+    > .settings-wing-status-scan-status:not(:empty)
+  ):has(> .settings-wing-scan-results[hidden]) {
+  gap: 0;
+  padding: 14px 0;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.settings-wing-scan-loading {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  align-self: stretch;
+  gap: 10px;
+  min-height: 22px;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-3);
+}
+
+.settings-wing-scan-loading[hidden] {
+  display: none !important;
+}
+
+.settings-wing-scan-loading-text {
+  flex: 0 1 auto;
+  text-align: left;
+}
+
+.settings-wing-scan-spinner {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #3d4450;
+  border-top-color: #64b5f6;
+  border-radius: 50%;
+  box-sizing: border-box;
+  animation: settings-wing-scan-spin 0.75s linear infinite;
+}
+
+@keyframes settings-wing-scan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-wing-scan-spinner {
+    animation: none;
+    border-top-color: #3d4450;
+    border-right-color: #64b5f6;
+  }
+}
+
+.settings-wing-status-scan-status {
+  margin: 0;
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3);
+  min-height: 0;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.settings-wing-status-scan-status:empty {
+  display: none;
+}
+
+.settings-wing-status-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.settings-wing-status-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  height: var(--wing-status-field-height);
+  min-height: var(--wing-status-field-height);
+  border: 1px solid #3d4450;
+  border-radius: 6px;
+  background: #1a1d24;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+/* Manual IP mode only (input enabled); not when auto-discovery locks the field */
+.settings-wing-status-field:has(.settings-wing-status-address-input:enabled:hover):not(:focus-within) {
+  border-color: #4e5868;
+  background: #1e232c;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.settings-wing-status-field:focus-within {
+  border-color: rgba(66, 165, 245, 0.55);
+  box-shadow: 0 0 0 1px rgba(66, 165, 245, 0.25);
+}
+
+.settings-wing-status-badge {
+  flex-shrink: 0;
+  flex: 0 0 124px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 124px;
+  height: var(--wing-status-line-height);
+  min-height: var(--wing-status-line-height);
+  box-sizing: border-box;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0 10px;
+  border-radius: 6px;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.settings-wing-status-badge--connected {
+  color: #c8e6c9;
+  background-color: rgba(46, 125, 50, 0.35);
+  border-color: #43a047;
+}
+
+.settings-wing-status-badge--disconnected {
+  color: #ffcdd2;
+  background-color: rgba(198, 40, 40, 0.3);
+  border-color: #e57373;
+}
+
+.settings-wing-status-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a939e;
+}
+
+.settings-wing-ip-inline-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: var(--wing-status-field-height);
+  min-width: var(--wing-status-field-height);
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-left: 1px solid #3d4450;
+  border-radius: 0;
+  background: #22262e;
+  color: #e3f2fd;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.settings-wing-ip-inline-btn:hover {
+  background: #2c313a;
+}
+
+.settings-wing-ip-inline-btn:focus {
+  outline: none;
+}
+
+.settings-wing-ip-inline-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(66, 165, 245, 0.45);
+}
+
+@keyframes settings-wing-apply-pulse {
+  0%,
+  100% {
+    background-color: #22262e;
+    color: #a5d6a7;
+    box-shadow: inset 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+  50% {
+    background-color: rgba(46, 125, 50, 0.32);
+    color: #c8e6c9;
+    box-shadow: inset 0 0 14px 0 rgba(76, 175, 80, 0.2);
+  }
+}
+
+.settings-wing-ip-inline-btn--apply {
+  color: #a5d6a7;
+}
+
+/* Nudge when IP is edited but not saved yet (button only visible then) */
+.settings-wing-ip-inline-btn--apply:not([hidden]):not(:disabled) {
+  animation: settings-wing-apply-pulse 2.6s ease-in-out infinite;
+}
+
+.settings-wing-ip-inline-btn--apply:not([hidden]):not(:disabled):hover,
+.settings-wing-ip-inline-btn--apply:not([hidden]):not(:disabled):focus-visible {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-wing-ip-inline-btn--apply:not([hidden]):not(:disabled) {
+    animation: none;
+  }
+}
+
+.settings-wing-ip-inline-btn--apply:hover {
+  background: rgba(46, 125, 50, 0.22);
+}
+
+.settings-wing-ip-inline-btn--clear {
+  font-size: 18px;
+  color: #ffcdd2;
+}
+
+.settings-wing-ip-inline-btn--clear:hover {
+  background: rgba(198, 40, 40, 0.22);
+}
+
+.settings-wing-ip-inline-btn[hidden] {
+  display: none !important;
+}
+
+.settings-wing-ip-inline-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.settings-wing-status-address-input {
+  display: block;
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: #e3f2fd;
+  line-height: 1.25;
+  align-self: center;
+  word-break: break-all;
+}
+
+.settings-wing-status-address-input:enabled {
+  cursor: text;
+}
+
+.settings-wing-status-address-input:enabled:hover {
+  color: #f5f9ff;
+}
+
+.settings-wing-status-address-input:focus {
+  outline: none;
+}
+
+.settings-wing-status-address-input:not(:disabled):focus {
+  box-shadow: none;
+}
+
+.settings-wing-status-address-input:disabled {
+  opacity: 1;
+  cursor: default;
+  -webkit-text-fill-color: #e3f2fd;
+}
+
+.settings-wing-status-comment {
+  margin: 0 calc(-1 * var(--wing-status-pad-x));
+  padding: 14px var(--wing-status-pad-x) 0;
+  border-top: 1px solid #323842;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3);
+  box-sizing: border-box;
+}
+
+.settings-wing-status-comment--after-scan-results {
+  border-top: none;
+  padding-top: 0;
+}
+
+.settings-wing-status-comment--error {
+  color: var(--color-danger);
+}
+
+/* Settings – Color Grid */
+
+.settings-color-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 4px 28px;
+}
+
+.settings-color-grid--in-card {
+  padding-left: 0;
+  padding-top: 4px;
+}
+
+.settings-color-grid--in-card .settings-meter-color-field__kind {
+  flex: 0 0 98px;
+  min-width: 98px;
+}
+
+.settings-meter-color-field {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  height: var(--field-h);
+  min-height: var(--field-h);
+  max-height: var(--field-h);
+  border: 1px solid #3d4450;
+  border-radius: 6px;
+  background: #1a1d24;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.settings-meter-color-field:hover:not(:focus-within) {
+  border-color: #4e5868;
+  background: #1e232c;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.settings-meter-color-field:focus-within {
+  border-color: rgba(66, 165, 245, 0.55);
+  box-shadow: 0 0 0 1px rgba(66, 165, 245, 0.25);
+}
+
+.settings-meter-color-field__kind {
+  flex: 0 0 80px;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 8px 0 10px;
+  border-right: 1px solid #3d4450;
+  box-sizing: border-box;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a939e;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.settings-meter-color-field__kind-inner {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: translateY(0.5px);
+}
+
+.settings-meter-color-field .settings-color-input-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  min-height: 100%;
+  align-self: stretch;
+  margin: 0;
+  border-radius: 0;
+}
+
+.settings-meter-color-field .settings-color-input-wrap .settings-color-input {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border: none;
+  border-radius: 0;
+}
+
+.settings-meter-color-field .settings-color-input-wrap--cleared .settings-color-input {
+  border: none;
+}
+
+.settings-meter-color-field .settings-color-input-wrap--cleared {
+  border: none;
+}
+
+.settings-meter-color-field .settings-color-input::-webkit-color-swatch {
+  border-radius: 0;
+}
+
+.settings-meter-color-field .settings-color-input::-moz-color-swatch {
+  border-radius: 0;
+}
+
+.settings-meter-color-field .settings-color-input-wrap__x {
+  border-radius: 0;
+}
+
+.settings-meter-color-field__btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: var(--field-h) !important;
+  min-width: var(--field-h) !important;
+  height: auto !important;
+  min-height: 100% !important;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-left: 1px solid #3d4450;
+  border-radius: 0 !important;
+  background: #22262e !important;
+  box-sizing: border-box;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.settings-meter-color-field__btn:hover:not(:disabled) {
+  background: #2c313a !important;
+}
+
+.settings-meter-color-field__btn:focus {
+  outline: none;
+}
+
+.icon-btn.settings-meter-color-clear {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  color: #ffcdd2;
+}
+
+.settings-meter-color-clear__glyph {
+  display: block;
+  line-height: 1;
+  transform: translateY(-0.5px);
+  pointer-events: none;
+}
+
+.settings-meter-color-field .settings-meter-color-field__btn.settings-meter-color-clear:hover {
+  color: #ffcdd2;
+  background-color: rgba(198, 40, 40, 0.22) !important;
+}
+
+.icon-btn.settings-meter-color-clear:focus {
+  outline: none;
+}
+
+.icon-btn.settings-meter-color-clear:focus-visible {
+  box-shadow: 0 0 0 2px rgba(66, 165, 245, 0.45);
+}
+
+.icon-btn.settings-meter-color-default-kind {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.settings-color-grid-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0 2px;
+  margin-top: 2px;
+  border-top: 1px solid var(--surface-1);
+}
+
+.settings-color-input-wrap {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+
+.settings-color-input-wrap .settings-color-input {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+  outline: none;
+  overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.settings-color-input-wrap .settings-color-input:focus,
+.settings-color-input-wrap .settings-color-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.settings-color-input-wrap--cleared {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-2);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.settings-color-input-wrap--cleared .settings-color-input {
+  opacity: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.settings-color-input-wrap__x {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.settings-color-input-wrap--cleared .settings-color-input-wrap__x {
+  display: block;
+  /* Tiled hatch (not one stretched diagonal) — reads at any aspect ratio, including wide meter rows */
+  background-color: #252830;
+  background-image: repeating-linear-gradient(
+    -42deg,
+    #252830 0,
+    #252830 5px,
+    rgba(255, 255, 255, 0.055) 5px,
+    rgba(255, 255, 255, 0.055) 6px
+  );
+}
+
+.settings-meter-color-field .settings-color-input-wrap--cleared .settings-color-input-wrap__x {
+  border-radius: 0;
+  background-color: #22262e;
+  background-image: repeating-linear-gradient(
+    -42deg,
+    #22262e 0,
+    #22262e 6px,
+    rgba(255, 255, 255, 0.045) 6px,
+    rgba(255, 255, 255, 0.045) 7px
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.settings-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+.settings-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.settings-color-input::-moz-color-swatch {
+  border: none;
+  border-radius: 3px;
+  box-sizing: border-box;
+}

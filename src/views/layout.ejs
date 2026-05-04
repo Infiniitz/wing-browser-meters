@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title><%= title || 'Wing Browser Meters' %></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <%
+    const _base = typeof bodyClass !== 'undefined' && bodyClass ? String(bodyClass) : '';
+    const _lrm = typeof lowResourceMode !== 'undefined' && lowResourceMode ? 'low-resource' : '';
+    const _bodyClass = [_base, _lrm].filter(Boolean).join(' ');
+  %>
+  <body class="<%= _bodyClass %>">
+    <% if (!hideHeader) { %>
+      <%- include('partials/header') %>
+    <% } %>
+    <%- body %>
+  </body>
+</html>
+

@@ -1,0 +1,27 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log
+TODO.md
+
+# Editors / OS
+.vscode/
+.cursor/
+.idea/
+*.swp
+*~
+
+# Test / coverage (if you add a test runner later)
+coverage/
+.nyc_output/
+
+# Persistent settings (runtime data, never committed)
+/data/*
+!/data/.gitkeep
+
+# Local-only README/SVG demo (depends on a live Wing on the LAN; the snapshot
+# and rendered SVGs include real channel names, so they stay local)
+/demo/

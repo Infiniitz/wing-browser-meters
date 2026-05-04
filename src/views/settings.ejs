@@ -1,0 +1,567 @@
+<div class="settings-root">
+  <div class="settings-card">
+    <div class="settings-header">
+      <div class="settings-title">Settings</div>
+    </div>
+
+    <%
+      const displayLayoutState =
+        typeof displayLayout !== 'undefined' && displayLayout
+          ? displayLayout
+          : {
+              showNumberLabel: true,
+              showNameLabel: true,
+              verticalRowMode: false,
+              verticalRowCount: 2,
+              verticalMetersPerRow: 12,
+            };
+      const meterLabelColorsState =
+        typeof meterLabelColors !== 'undefined' && meterLabelColors
+          ? meterLabelColors
+          : { labelColorModeCustom: false, labelColors: {} };
+      const mlc = meterLabelColorsState.labelColors || {};
+      const meterTextColorsState =
+        typeof meterTextColors !== 'undefined' && meterTextColors
+          ? meterTextColors
+          : { textColorModeCustom: false, textColors: {} };
+      const mtc = meterTextColorsState.textColors || {};
+      const textColorDefaultHex = '#000000';
+      const labelColorDefaultHex = '#455a64';
+      const meterColorKindRows = [
+        ['channel', 'Channels'],
+        ['aux', 'Auxes'],
+        ['bus', 'Buses'],
+        ['main', 'Mains'],
+        ['matrix', 'Matrices'],
+        ['dca', 'DCAs'],
+      ];
+      const iconAll = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="5" height="5" rx="1" fill="currentColor" stroke="currentColor"/><rect x="8.5" y="0.5" width="5" height="5" rx="1" fill="currentColor" stroke="currentColor"/><rect x="0.5" y="8.5" width="5" height="5" rx="1" fill="currentColor" stroke="currentColor"/><rect x="8.5" y="8.5" width="5" height="5" rx="1" fill="currentColor" stroke="currentColor"/></svg>';
+      const iconNone = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><rect x="9" y="1" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><rect x="1" y="9" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><rect x="9" y="9" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/></svg>';
+      /* Same 2×2 cell geometry as All/None: left column filled = PRE, right outlined */
+      const iconGroupPre = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="5" height="5" rx="1" fill="currentColor" stroke="currentColor"/><rect x="0.5" y="8.5" width="5" height="5" rx="1" fill="currentColor" stroke="currentColor"/><rect x="9" y="1" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><rect x="9" y="9" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/></svg>';
+      /* Right column filled = POST, left outlined */
+      const iconGroupPost = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><rect x="1" y="9" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><rect x="8.5" y="0.5" width="5" height="5" rx="1" fill="currentColor" stroke="currentColor"/><rect x="8.5" y="8.5" width="5" height="5" rx="1" fill="currentColor" stroke="currentColor"/></svg>';
+    %>
+
+    <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+      <button type="button" class="settings-tab settings-tab--active" role="tab" id="settings-tab-meter" aria-selected="true" aria-controls="settings-panel-meter">Meter selection</button>
+      <button type="button" class="settings-tab" role="tab" id="settings-tab-display" aria-selected="false" aria-controls="settings-panel-display" tabindex="-1">Display</button>
+      <button type="button" class="settings-tab" role="tab" id="settings-tab-connection" aria-selected="false" aria-controls="settings-panel-connection" tabindex="-1">Mixer &amp; connection</button>
+    </div>
+    <div class="settings-tab-panels">
+      <div class="settings-tab-panel settings-tab-panel--active" role="tabpanel" id="settings-panel-meter" aria-labelledby="settings-tab-meter">
+        <div class="settings-meter-block">
+          <div class="settings-connection-section-card-title">
+            <span class="settings-wing-status-label">Meter selection</span>
+          </div>
+          <p class="settings-note settings-note--meter-block" id="meterSelectionNote">
+            Choose which channels and busses to show as meters. Changes take effect after saving; the app will reconnect to the mixer.
+          </p>
+
+          <div class="meter-config-toolbar">
+            <div class="meter-config-toolbar-actions">
+              <div class="meter-config-toolbar-row" id="toolbarSelection">
+                <button type="button" class="settings-btn" id="globalAll">All</button>
+                <button type="button" class="settings-btn" id="globalNone">None</button>
+              </div>
+              <div class="meter-config-toolbar-row" id="toolbarTap" hidden>
+                <button type="button" class="settings-btn settings-btn--pre" id="globalAllPre">All PRE</button>
+                <button type="button" class="settings-btn settings-btn--post" id="globalAllPost">All POST</button>
+              </div>
+            </div>
+            <button type="button" class="settings-btn meter-config-toolbar-mode" id="meterTapModeToggle" title="Switch to editing pre-fader vs post-fader meter tap for each box (green = PRE, red = POST).">Set PRE/POST tap per meter</button>
+          </div>
+          <hr class="settings-wing-status-divider" aria-hidden="true" />
+
+          <div class="meter-config" id="meterConfig" data-refresh-interval="<%= refreshIntervalMs %>">
+          <div class="meter-config-group">
+            <div class="meter-config-group-header">
+              <div class="meter-config-label">Channel</div>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="all" title="Select all channels"><%- iconAll %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="none" title="Deselect all channels"><%- iconNone %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-pre-glyph" data-tap="pre" title="Set all channels to PRE fader tap"><%- iconGroupPre %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-post-glyph" data-tap="post" title="Set all channels to POST fader tap"><%- iconGroupPost %></button>
+            </div>
+            <div class="meter-config-grid" data-kind="channel" data-count="40"></div>
+          </div>
+          <div class="meter-config-group">
+            <div class="meter-config-group-header">
+              <div class="meter-config-label">Aux</div>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="all" title="Select all auxes"><%- iconAll %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="none" title="Deselect all auxes"><%- iconNone %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-pre-glyph" data-tap="pre" title="Set all auxes to PRE fader tap"><%- iconGroupPre %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-post-glyph" data-tap="post" title="Set all auxes to POST fader tap"><%- iconGroupPost %></button>
+            </div>
+            <div class="meter-config-grid" data-kind="aux" data-count="8"></div>
+          </div>
+          <div class="meter-config-group">
+            <div class="meter-config-group-header">
+              <div class="meter-config-label">Bus</div>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="all" title="Select all buses"><%- iconAll %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="none" title="Deselect all buses"><%- iconNone %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-pre-glyph" data-tap="pre" title="Set all buses to PRE fader tap"><%- iconGroupPre %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-post-glyph" data-tap="post" title="Set all buses to POST fader tap"><%- iconGroupPost %></button>
+            </div>
+            <div class="meter-config-grid" data-kind="bus" data-count="16"></div>
+          </div>
+          <div class="meter-config-group">
+            <div class="meter-config-group-header">
+              <div class="meter-config-label">Main</div>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="all" title="Select all mains"><%- iconAll %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="none" title="Deselect all mains"><%- iconNone %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-pre-glyph" data-tap="pre" title="Set all mains to PRE fader tap"><%- iconGroupPre %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-post-glyph" data-tap="post" title="Set all mains to POST fader tap"><%- iconGroupPost %></button>
+            </div>
+            <div class="meter-config-grid" data-kind="main" data-count="4"></div>
+          </div>
+          <div class="meter-config-group">
+            <div class="meter-config-group-header">
+              <div class="meter-config-label">Matrix</div>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="all" title="Select all matrices"><%- iconAll %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="none" title="Deselect all matrices"><%- iconNone %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-pre-glyph" data-tap="pre" title="Set all matrices to PRE fader tap"><%- iconGroupPre %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-post-glyph" data-tap="post" title="Set all matrices to POST fader tap"><%- iconGroupPost %></button>
+            </div>
+            <div class="meter-config-grid" data-kind="matrix" data-count="8"></div>
+          </div>
+          <div class="meter-config-group">
+            <div class="meter-config-group-header">
+              <div class="meter-config-label">DCA</div>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="all" title="Select all DCAs"><%- iconAll %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-select" data-action="none" title="Deselect all DCAs"><%- iconNone %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-pre-glyph" data-tap="pre" title="Set all DCAs to PRE fader tap"><%- iconGroupPre %></button>
+              <button type="button" class="icon-btn icon-btn--sm icon-btn--group-tap icon-btn--tap-post-glyph" data-tap="post" title="Set all DCAs to POST fader tap"><%- iconGroupPost %></button>
+            </div>
+            <div class="meter-config-grid" data-kind="dca" data-count="16"></div>
+          </div>
+          </div>
+
+          <div class="meter-config-actions">
+            <button type="button" class="settings-btn settings-btn-primary" id="meterConfigSave">Save</button>
+            <div class="meter-config-actions-after-save">
+              <button
+                type="button"
+                class="settings-btn settings-btn--secondary meter-config-clear-btn"
+                id="meterConfigRevert"
+                title="Clear new selection — restores the last saved meters and PRE/POST taps"
+              >
+                Clear new selection
+              </button>
+              <span class="meter-config-message" id="meterConfigMessage" aria-live="polite"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-tab-panel" role="tabpanel" id="settings-panel-display" aria-labelledby="settings-tab-display" hidden>
+        <div class="settings-display-layout">
+          <div class="settings-connection-section-card">
+            <div class="settings-connection-section-card-title">
+              <span class="settings-wing-status-label">Layout &amp; labels</span>
+            </div>
+            <div class="settings-row">
+              <label class="settings-toggle">
+                <input type="checkbox" id="showNumberLabel" <%= displayLayoutState.showNumberLabel ? 'checked' : '' %> />
+                <span class="settings-toggle-slider"></span>
+              </label>
+              <div class="settings-row-text">
+                <span class="settings-row-label">Number labels</span>
+                <span class="settings-row-hint">Show channel number labels in Horizontal view</span>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <label class="settings-toggle">
+                <input type="checkbox" id="showNameLabel" <%= displayLayoutState.showNameLabel ? 'checked' : '' %> />
+                <span class="settings-toggle-slider"></span>
+              </label>
+              <div class="settings-row-text">
+                <span class="settings-row-label">Name labels</span>
+                <span class="settings-row-hint">Show channel name labels in Horizontal view</span>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <label class="settings-toggle">
+                <input type="checkbox" id="verticalRowMode" <%= displayLayoutState.verticalRowMode ? 'checked' : '' %> />
+                <span class="settings-toggle-slider"></span>
+              </label>
+              <div class="settings-row-text">
+                <span class="settings-row-label">Custom row layout</span>
+                <span class="settings-row-hint">Vertical view: split meters into fixed rows with a chosen number per row</span>
+              </div>
+            </div>
+            <div
+              class="settings-vertical-row-fields"
+              id="verticalRowModeFields"
+              <%= displayLayoutState.verticalRowMode ? '' : 'hidden' %>
+            >
+              <div
+                class="settings-meter-color-field settings-vertical-row-mode-field"
+                role="group"
+                aria-label="Rows — How many rows to use in vertical view"
+              >
+                <span class="settings-meter-color-field__kind">
+                  <span class="settings-meter-color-field__kind-inner">Rows</span>
+                </span>
+                <div class="settings-vertical-row-mode-field__value">
+                  <input
+                    type="number"
+                    id="verticalRowCount"
+                    class="settings-vertical-row-mode-field__input"
+                    value="<%= displayLayoutState.verticalRowCount %>"
+                    min="1"
+                    max="92"
+                    step="1"
+                    inputmode="numeric"
+                    aria-label="Number of rows"
+                    title="How many rows to use in vertical view"
+                  />
+                  <div class="settings-vertical-row-mode-field__spin">
+                    <button
+                      type="button"
+                      class="settings-btn settings-vertical-row-mode-field__step settings-vertical-row-mode-field__step--up"
+                      aria-label="Increase rows"
+                    >
+                      <svg class="settings-vertical-row-mode-field__step-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M6 0l6 8H0z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="settings-btn settings-vertical-row-mode-field__step settings-vertical-row-mode-field__step--down"
+                      aria-label="Decrease rows"
+                    >
+                      <svg class="settings-vertical-row-mode-field__step-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M6 8l6-8H0z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="settings-meter-color-field settings-vertical-row-mode-field"
+                role="group"
+                aria-label="Meters per row — How many meters appear in each row"
+              >
+                <span class="settings-meter-color-field__kind">
+                  <span class="settings-meter-color-field__kind-inner">Meters per row</span>
+                </span>
+                <div class="settings-vertical-row-mode-field__value">
+                  <input
+                    type="number"
+                    id="verticalMetersPerRow"
+                    class="settings-vertical-row-mode-field__input"
+                    value="<%= displayLayoutState.verticalMetersPerRow %>"
+                    min="1"
+                    max="92"
+                    step="1"
+                    inputmode="numeric"
+                    aria-label="Meters per row"
+                    title="Meters in each row"
+                  />
+                  <div class="settings-vertical-row-mode-field__spin">
+                    <button
+                      type="button"
+                      class="settings-btn settings-vertical-row-mode-field__step settings-vertical-row-mode-field__step--up"
+                      aria-label="Increase meters per row"
+                    >
+                      <svg class="settings-vertical-row-mode-field__step-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M6 0l6 8H0z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="settings-btn settings-vertical-row-mode-field__step settings-vertical-row-mode-field__step--down"
+                      aria-label="Decrease meters per row"
+                    >
+                      <svg class="settings-vertical-row-mode-field__step-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M6 8l6-8H0z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="settings-vertical-row-overflow-note" id="verticalRowOverflowNote" hidden aria-live="polite"></p>
+          </div>
+
+          <div class="settings-connection-section-card">
+            <div class="settings-connection-section-card-title">
+              <span class="settings-wing-status-label">Meter colors</span>
+            </div>
+            <div class="settings-row">
+              <label class="settings-toggle">
+                <input
+                  type="checkbox"
+                  id="textColorModeCustom"
+                  aria-describedby="textColorModeHint"
+                  <%= meterTextColorsState.textColorModeCustom ? 'checked' : '' %>
+                />
+                <span class="settings-toggle-slider"></span>
+              </label>
+              <div class="settings-row-text">
+                <span class="settings-row-label">Custom text color</span>
+                <span class="settings-row-hint" id="textColorModeHint">When off, auto black or white from label brightness.</span>
+              </div>
+            </div>
+            <div
+              class="settings-color-grid settings-color-grid--in-card"
+              id="textColorGrid"
+              data-default-text-hex="<%= textColorDefaultHex %>"
+              <%= meterTextColorsState.textColorModeCustom ? '' : 'style="display: none;"' %>
+            >
+              <% meterColorKindRows.forEach(function (row) {
+                const kind = row[0];
+                const rowLabel = row[1];
+                const hasOverride = typeof mtc[kind] === 'string' && mtc[kind];
+                const inputVal = hasOverride ? mtc[kind] : textColorDefaultHex;
+              %>
+              <div class="settings-meter-color-field" role="group" aria-label="<%= rowLabel %> — custom text color">
+                <span class="settings-meter-color-field__kind"><span class="settings-meter-color-field__kind-inner"><%= rowLabel %></span></span>
+                <span class="settings-color-input-wrap<%= hasOverride ? '' : ' settings-color-input-wrap--cleared' %>">
+                  <input
+                    type="color"
+                    class="settings-color-input settings-text-color-input"
+                    data-kind="<%= kind %>"
+                    data-override="<%= hasOverride ? 'true' : 'false' %>"
+                    value="<%= inputVal %>"
+                  />
+                  <span class="settings-color-input-wrap__x" aria-hidden="true"></span>
+                </span>
+                <button type="button" class="icon-btn icon-btn--sm settings-meter-color-field__btn settings-meter-color-clear" data-scope="text" data-kind="<%= kind %>" title="Use auto text from Wing label color for this kind" aria-label="Use auto text from Wing label color for this kind"><span class="settings-meter-color-clear__glyph" aria-hidden="true">×</span></button>
+                <button type="button" class="icon-btn icon-btn--sm settings-meter-color-field__btn settings-meter-color-default-kind" data-scope="text" data-kind="<%= kind %>" title="Save factory default text color for this kind" aria-label="Save factory default text color for this kind">↺</button>
+              </div>
+              <% }); %>
+              <div class="settings-color-grid-footer">
+                <button
+                  type="button"
+                  class="settings-btn settings-btn--compact settings-btn--secondary"
+                  id="meterTextColorClearAll"
+                  title="Use automatic text color (from Wing label brightness) for every kind"
+                >
+                  Clear all
+                </button>
+                <button type="button" class="settings-btn settings-btn--compact" id="meterTextColorDefaultAll" title="Save factory default text color for every kind">Default all</button>
+              </div>
+            </div>
+            <div class="settings-row">
+              <label class="settings-toggle">
+                <input
+                  type="checkbox"
+                  id="labelColorModeCustom"
+                  aria-describedby="labelColorModeHint"
+                  <%= meterLabelColorsState.labelColorModeCustom ? 'checked' : '' %>
+                />
+                <span class="settings-toggle-slider"></span>
+              </label>
+              <div class="settings-row-text">
+                <span class="settings-row-label">Custom label color</span>
+                <span class="settings-row-hint" id="labelColorModeHint">When off, use scribble strip colors from the Wing.</span>
+              </div>
+            </div>
+            <div
+              class="settings-color-grid settings-color-grid--in-card"
+              id="labelColorGrid"
+              data-default-label-hex="<%= labelColorDefaultHex %>"
+              <%= meterLabelColorsState.labelColorModeCustom ? '' : 'style="display: none;"' %>
+            >
+              <% meterColorKindRows.forEach(function (row) {
+                const kind = row[0];
+                const rowLabel = row[1];
+                const hasOverride = typeof mlc[kind] === 'string' && mlc[kind];
+                const inputVal = hasOverride ? mlc[kind] : labelColorDefaultHex;
+              %>
+              <div class="settings-meter-color-field" role="group" aria-label="<%= rowLabel %> — custom label color">
+                <span class="settings-meter-color-field__kind"><span class="settings-meter-color-field__kind-inner"><%= rowLabel %></span></span>
+                <span class="settings-color-input-wrap<%= hasOverride ? '' : ' settings-color-input-wrap--cleared' %>">
+                  <input
+                    type="color"
+                    class="settings-color-input settings-label-color-input"
+                    data-kind="<%= kind %>"
+                    data-override="<%= hasOverride ? 'true' : 'false' %>"
+                    value="<%= inputVal %>"
+                  />
+                  <span class="settings-color-input-wrap__x" aria-hidden="true"></span>
+                </span>
+                <button type="button" class="icon-btn icon-btn--sm settings-meter-color-field__btn settings-meter-color-clear" data-scope="label" data-kind="<%= kind %>" title="Use Wing scribble color for this kind" aria-label="Use Wing scribble color for this kind"><span class="settings-meter-color-clear__glyph" aria-hidden="true">×</span></button>
+                <button type="button" class="icon-btn icon-btn--sm settings-meter-color-field__btn settings-meter-color-default-kind" data-scope="label" data-kind="<%= kind %>" title="Save factory default label color for this kind" aria-label="Save factory default label color for this kind">↺</button>
+              </div>
+              <% }); %>
+              <div class="settings-color-grid-footer">
+                <button
+                  type="button"
+                  class="settings-btn settings-btn--compact settings-btn--secondary"
+                  id="meterLabelColorClearAll"
+                  title="Use Wing scribble strip color for every kind"
+                >
+                  Clear all
+                </button>
+                <button type="button" class="settings-btn settings-btn--compact" id="meterLabelColorDefaultAll" title="Save default label color for every kind">Default all</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-tab-panel" role="tabpanel" id="settings-panel-connection" aria-labelledby="settings-tab-connection" hidden>
+        <div class="settings-connection-layout">
+          <div class="settings-wing-status" id="wingConnectionStatus" aria-live="polite">
+            <div class="settings-wing-status-head">
+              <div class="settings-wing-status-head-top">
+                <label class="settings-wing-status-label" for="wingIpInput">Wing console connection</label>
+                <div class="settings-wing-status-head-actions">
+                  <label
+                    class="settings-wing-auto-toggle"
+                    title="When on, the address field shows the live console (read-only). Turn off to set a fixed IP or stay offline."
+                  >
+                    <input
+                      type="checkbox"
+                      id="wingAutoDiscovery"
+                      aria-label="Use automatic discovery"
+                    />
+                    <span class="settings-wing-auto-toggle-slider" aria-hidden="true">
+                      <span class="settings-wing-auto-toggle-knob">AUTO</span>
+                    </span>
+                  </label>
+                  <span class="settings-wing-scan-icon-wrap" id="wingScanBtnWrap">
+                    <button
+                      type="button"
+                      class="settings-wing-scan-icon-btn"
+                      id="wingScanBtn"
+                      aria-label="Scan network for Wing consoles"
+                    >
+                      <svg class="settings-wing-scan-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path
+                          fill="currentColor"
+                          d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <div class="settings-wing-status-toolbar">
+                <div class="settings-wing-status-field">
+                  <input
+                    type="text"
+                    id="wingIpInput"
+                    class="settings-wing-status-address-input"
+                    placeholder=""
+                    inputmode="decimal"
+                    autocomplete="off"
+                    spellcheck="false"
+                    aria-label="Wing console IP address"
+                  />
+                  <button
+                    type="button"
+                    class="settings-wing-ip-inline-btn settings-wing-ip-inline-btn--apply"
+                    id="wingApplyIpBtn"
+                    hidden
+                    aria-label="Apply IP address"
+                    title="Save this address and connect"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
+                    class="settings-wing-ip-inline-btn settings-wing-ip-inline-btn--clear"
+                    id="wingClearSavedIpBtn"
+                    hidden
+                    aria-label="Clear saved IP"
+                    title="Remove the saved address and stay offline until you apply a new IP or turn on discovery"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div class="settings-wing-status-badge settings-wing-status-badge--disconnected" id="wingStatusBadge" role="status" aria-label="Wing disconnected">Disconnected</div>
+              </div>
+            </div>
+            <div class="settings-wing-status-scan-panel" id="wingScanPanel" hidden>
+              <hr class="settings-wing-status-divider" aria-hidden="true" />
+              <div class="settings-wing-status-scan">
+                <div class="settings-wing-scan-loading" id="wingScanLoading" hidden aria-live="polite" aria-busy="true">
+                  <span class="settings-wing-scan-spinner" aria-hidden="true"></span>
+                  <span class="settings-wing-scan-loading-text">Scanning network…</span>
+                </div>
+                <p class="settings-wing-status-scan-status" id="wingScanStatus" aria-live="polite"></p>
+                <div class="settings-wing-scan-results" id="wingScanResults" hidden></div>
+              </div>
+              <hr class="settings-wing-status-divider settings-wing-status-divider--scan-results" id="wingScanResultsDivider" hidden aria-hidden="true" />
+            </div>
+            <p class="settings-wing-status-comment" id="wingConnectionHint"></p>
+          </div>
+
+          <div class="settings-connection-section-card">
+            <div class="settings-connection-section-card-title">
+              <span class="settings-wing-status-label">Performance</span>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-text">
+                <span class="settings-row-label">Refresh interval</span>
+                <span class="settings-row-hint">How often to refresh names and colors from the mixer</span>
+              </div>
+              <div class="settings-refresh-interval-field" role="group" aria-label="Refresh interval (milliseconds)">
+                <button
+                  type="button"
+                  class="settings-refresh-interval-field__unit"
+                  id="refreshIntervalUnit"
+                  aria-label="Unit: milliseconds. Click to switch to seconds."
+                  title="Unit: milliseconds. Click to switch to seconds."
+                ></button>
+                <div class="settings-vertical-row-mode-field__value">
+                  <input
+                    type="number"
+                    id="refreshInterval"
+                    class="settings-vertical-row-mode-field__input"
+                    value="<%= refreshIntervalMs %>"
+                    min="1000"
+                    max="300000"
+                    step="100"
+                    inputmode="numeric"
+                    aria-label="Refresh interval in milliseconds"
+                    title="How often to refresh names and colors from the mixer (ms)"
+                  />
+                  <div class="settings-vertical-row-mode-field__spin">
+                    <button
+                      type="button"
+                      class="settings-btn settings-vertical-row-mode-field__step settings-vertical-row-mode-field__step--up"
+                      aria-label="Increase refresh interval"
+                    >
+                      <svg class="settings-vertical-row-mode-field__step-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M6 0l6 8H0z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="settings-btn settings-vertical-row-mode-field__step settings-vertical-row-mode-field__step--down"
+                      aria-label="Decrease refresh interval"
+                    >
+                      <svg class="settings-vertical-row-mode-field__step-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M6 8l6-8H0z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <label class="settings-toggle">
+                <input type="checkbox" id="lowResourceMode" <%= (typeof lowResourceMode !== 'undefined' && lowResourceMode) ? 'checked' : '' %> />
+                <span class="settings-toggle-slider"></span>
+              </label>
+              <div class="settings-row-text">
+                <span class="settings-row-label">Low resource mode</span>
+                <span class="settings-row-hint">Reduce meter update rate for lower CPU usage</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/settings.js"></script>

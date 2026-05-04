@@ -1,0 +1,10 @@
+services:
+  wbm:
+    image: ghcr.io/infiniitz/wing-browser-meters:latest
+    container_name: wing-browser-meters
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      PORT: "3000"
+    volumes:
+      - ./data:/app/data
